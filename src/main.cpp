@@ -9,15 +9,8 @@
 #include <iostream>
 
 #include "shader.h"
-
-typedef struct Transform
-{
-	glm::vec2 atlasPos;
-	glm::vec2 pos;
-	glm::vec2 tileSize;
-
-	float scale; // scales x and y both
-} Transform;
+#include "gl_renderer.h"
+#include "render_types.h"
 
 const int width = 1920,
 		  height = 1080;
@@ -41,8 +34,6 @@ int main(void)
 		return -1;
 	}
 
-	// glfwSetKeyCallback(window, key_callback);
-
 	glfwMakeContextCurrent(window);
 	int result = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 	if (!result)
@@ -52,19 +43,8 @@ int main(void)
 
 	glfwSwapInterval(1);
 
-	glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	// glDebugMessageCallback(glDebugOutput, 0);
-	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-
-	unsigned int backgroundTex;
-	glGenTextures(1, &backgroundTex);
-	glBindTexture(GL_TEXTURE_2D, backgroundTex);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	Renderer renderer;
+	initRenderer(&renderer, width, height);
 
 	int texWidth, texHeight, channels;
 	stbi_set_flip_vertically_on_load(false); // wichtig: OpenGL erwartet UV-Ursprung unten links
@@ -82,22 +62,9 @@ int main(void)
 	}
 	stbi_image_free(backgroundTexture);
 
-	GLuint spriteSheet;
-	glGenTextures(1, &spriteSheet);
-	glBindTexture(GL_TEXTURE_2D, spriteSheet);
+	Texture forestSpriteSheet = registerTexture(&renderer, "Forest.png");
 
-	unsigned char *spriteSheetTexture = stbi_load("assets/textures/Forest.png", &texWidth, &texHeight, &channels, 0);
-	if (spriteSheet)
-	{
-		GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
-		glTexImage2D(GL_TEXTURE_2D, 0, format, texWidth, texHeight, 0, format, GL_UNSIGNED_BYTE, spriteSheetTexture);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-	{
-		std::cerr << "Failed to load texture" << std::endl;
-	}
-	stbi_image_free(spriteSheetTexture);
+	std::cout << "Size of Transorm: " << sizeof(Transform) << std::endl;
 
 	// Set up transforms for the shader
 	std::vector<Transform> transforms;
@@ -110,24 +77,22 @@ int main(void)
 	t.pos.x = 100;
 	t.pos.y = 100;
 
-	t.scale = 5.0;
+	t.scale = 1.0;
+
+	transforms.push_back(t);
+	t.pos.x = 200;
 	transforms.push_back(t);
 
 	GLuint ssbo;
 	glGenBuffers(1, &ssbo);
-
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+
 	glBufferData(GL_SHADER_STORAGE_BUFFER,
 				 transforms.size() * sizeof(Transform),
-				 transforms.data(),
+				 &transforms[0],
 				 GL_DYNAMIC_DRAW);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
-
-	// Init openGL
-	GLuint VAO;
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
 
 	glm::mat4 ortho = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
 
@@ -135,6 +100,10 @@ int main(void)
 	s.use();
 	s.setInt("backgroundTexture", 0);
 	s.setMatrix4f("ortho", ortho);
+
+	Sprite sp;
+	sp.name = "Forest";
+	sp.t = t;
 
 	glViewport(0, 0, width, height);
 	while (!glfwWindowShouldClose(window))
@@ -150,14 +119,17 @@ int main(void)
 		s.use();
 		s.setMatrix4f("ortho", ortho);
 
-		glBindVertexArray(VAO);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, backgroundTex);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindTexture(GL_TEXTURE_2D, forestSpriteSheet.handle);
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, spriteSheet);
-		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, transforms.size());
+		drawSprite(&renderer, &sp, glm::vec2(100, 200), 5.0f);
+		drawSprite(&renderer, &sp, glm::vec2(100, 300), 5.0f);
+		drawSprite(&renderer, &sp, glm::vec2(200, 200), 5.0f);
+		drawSprite(&renderer, &sp, glm::vec2(300, 200), 5.0f);
+		drawSprite(&renderer, &sp, glm::vec2(400, 200), 5.0f);
+		drawSprite(&renderer, &sp, glm::vec2(500, 200), 5.0f);
+		render(&renderer);
+
 		// glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glfwSwapBuffers(window);

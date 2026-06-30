@@ -22,7 +22,10 @@ file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/
 
 
 add_executable("${CMAKE_PROJECT_NAME}"
-	src/Shader.cpp)
+	src/Shader.cpp
+	src/gl_renderer.h
+	src/gl_renderer.cpp
+	src/array.h)
 
 set_property(TARGET "${CMAKE_PROJECT_NAME}" PROPERTY CXX_STANDARD 17)
 

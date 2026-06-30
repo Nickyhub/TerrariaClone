@@ -4,8 +4,8 @@
 out vec2 TexCoord;
 
 struct Transform {
-    vec2 atlasPos;
     vec2 pos;
+    vec2 atlasPos;
     vec2 tileSize;
 
     float scale;
