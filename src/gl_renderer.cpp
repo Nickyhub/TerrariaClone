@@ -1,153 +1,107 @@
 #include "gl_renderer.h"
 
 #include <iostream>
+// #include <string>
 
 #include <stb_image/stb_image.h>
 
 int getCurrentOpenGLTexture(int textureIndex);
 
-void initRenderer(Renderer *renderer, int width, int height)
-{
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+static Renderer *render_ptr;
 
-    // Init openGL
-    GLuint VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
+void initRenderer() {
+	render_ptr = new Renderer();
+	glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr,
+						  GL_TRUE);
 
-    glGenBuffers(1, &renderer->SSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderer->SSBO);
+	// Init openGL
+	GLuint VAO;
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+
+	glGenBuffers(1, &render_ptr->SSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, render_ptr->SSBO);
 }
 
-Texture registerTexture(Renderer *renderer, const char *name)
-{
-    Texture t;
-    glGenTextures(1, &t.handle);
-    // glActiveTexture(getCurrentOpenGLTexture(renderer->textures.size()));
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, t.handle);
+void shutdownRenderer() { delete render_ptr; }
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+void registerTexture(const char *name, ImageFileExtension ext) {
+	Texture t;
+	glGenTextures(1, &t.handle);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, t.handle);
 
-    int channels;
-    char buffer[512];
-    const char *format = "assets/textures/%s";
-    sprintf_s(buffer, format, name);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    unsigned char *data = stbi_load(buffer, &t.width, &t.height, &channels, 4);
+	int channels;
+	char buffer[512];
 
-    if (data)
-    {
-        GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, format, t.width, t.height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    else
-    {
-        std::cerr << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
+	const char *extension;
+	switch (ext) {
+		case PNG:
+			extension = "png";
+			break;
+		case JPG:
+			extension = "jpg";
+			break;
+		case BMP:
+			extension = "bmp";
+			break;
+		default:
+			extension = "png";
+			break;
+	}
 
-    renderer->textures.add(t);
-    return t;
+	const char *format_str = "assets/textures/%s.%s";
+	sprintf_s(buffer, format_str, name, extension);
+
+	unsigned char *data = stbi_load(buffer, &t.width, &t.height, &channels, 4);
+
+	if (data) {
+		GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
+		glTexImage2D(GL_TEXTURE_2D, 0, format, t.width, t.height, 0, format,
+					 GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	} else {
+		std::cerr << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
+
+	// Put it in the atlas lookups and in the textures themselves
+	render_ptr->textures.insert(std::make_pair(name, t));
+	render_ptr->atlases.insert(
+		std::make_pair(name, Array<Transform, MAX_TRANSFORMS>()));
 }
 
-void drawSprite(Renderer *renderer, Sprite *sprite, glm::vec2 pos, float scale)
-{
-    sprite->t.pos = pos;
-    sprite->t.scale = scale;
-    renderer->transforms.add(sprite->t);
+void drawSprite(std::string atlasName, Sprite *sprite, glm::vec2 pos,
+				float scale) {
+	sprite->t.pos = pos;
+	sprite->t.scale = scale;
+	render_ptr->atlases.at(atlasName).add(sprite->t);
 }
 
-void render(Renderer *renderer)
-{
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderer->SSBO);
+void render() {
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, render_ptr->SSBO);
 
-    glBufferData(GL_SHADER_STORAGE_BUFFER,
-                 renderer->transforms.size() * sizeof(Transform),
-                 &renderer->transforms[0],
-                 GL_DYNAMIC_DRAW);
+	glActiveTexture(GL_TEXTURE0);
 
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderer->SSBO);
+	std::map<std::string, Array<Transform, MAX_TRANSFORMS>>::iterator it;
+	for (it = render_ptr->atlases.begin(); it != render_ptr->atlases.end();
+		 it++) {
+		glBindTexture(GL_TEXTURE_2D, render_ptr->textures.at(it->first).handle);
 
-    glDrawArraysInstanced(GL_TRIANGLES, 0, 6, renderer->transforms.size());
-    renderer->transforms.reset();
-}
+		glBufferData(GL_SHADER_STORAGE_BUFFER,
+					 it->second.size() * sizeof(Transform), &it->second[0],
+					 GL_DYNAMIC_DRAW);
 
-int getCurrentOpenGLTexture(int textureIndex)
-{
-    switch (textureIndex)
-    {
-    case 0:
-        return GL_TEXTURE0;
-    case 1:
-        return GL_TEXTURE1;
-    case 2:
-        return GL_TEXTURE2;
-    case 3:
-        return GL_TEXTURE3;
-    case 4:
-        return GL_TEXTURE4;
-    case 5:
-        return GL_TEXTURE5;
-    case 6:
-        return GL_TEXTURE6;
-    case 7:
-        return GL_TEXTURE7;
-    case 8:
-        return GL_TEXTURE8;
-    case 9:
-        return GL_TEXTURE9;
-    case 10:
-        return GL_TEXTURE10;
-    case 11:
-        return GL_TEXTURE11;
-    case 12:
-        return GL_TEXTURE12;
-    case 13:
-        return GL_TEXTURE13;
-    case 14:
-        return GL_TEXTURE14;
-    case 15:
-        return GL_TEXTURE15;
-    case 16:
-        return GL_TEXTURE16;
-    case 17:
-        return GL_TEXTURE17;
-    case 18:
-        return GL_TEXTURE18;
-    case 19:
-        return GL_TEXTURE19;
-    case 20:
-        return GL_TEXTURE20;
-    case 21:
-        return GL_TEXTURE21;
-    case 22:
-        return GL_TEXTURE22;
-    case 23:
-        return GL_TEXTURE23;
-    case 24:
-        return GL_TEXTURE24;
-    case 25:
-        return GL_TEXTURE25;
-    case 26:
-        return GL_TEXTURE26;
-    case 27:
-        return GL_TEXTURE27;
-    case 28:
-        return GL_TEXTURE28;
-    case 29:
-        return GL_TEXTURE29;
-    case 30:
-        return GL_TEXTURE30;
-    case 31:
-        return GL_TEXTURE31;
-    default:
-        return -1;
-    }
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, render_ptr->SSBO);
+
+		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, (GLsizei)it->second.size());
+		it->second.reset();
+	}
 }

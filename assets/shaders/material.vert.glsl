@@ -45,6 +45,7 @@ void main()
     vec2 pos = positions[gl_VertexID];
 
     gl_Position = ortho * vec4(pos, 0.0, 1.0);
+    //gl_Position = vec4(pos, 0.0f, 1.0f);
 
     TexCoord = texCoords[gl_VertexID];
 }

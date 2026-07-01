@@ -1,23 +1,24 @@
 #include <glad/glad.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include <stb_image/stb_image.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <stb_image/stb_image.h>
 
-#include <vector>
 #include <iostream>
+#include <vector>
 
-#include "shader.h"
 #include "gl_renderer.h"
 #include "render_types.h"
+#include "shader.h"
 
-const int width = 1920,
-		  height = 1080;
+const int width = 1920, height = 1080;
 
-int main(void)
-{
+void onWindowResize(GLFWwindow *window) {
+	// glViewport(get)
+}
 
+int main(void) {
 	if (!glfwInit())
 		return -1;
 
@@ -25,44 +26,31 @@ int main(void)
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // you might want to do this when testing the game for shipping
+	glfwWindowHint(GLFW_OPENGL_PROFILE,
+				   GLFW_OPENGL_CORE_PROFILE); // you might want to do this when
+											  // testing the game for shipping
 
-	GLFWwindow *window = window = glfwCreateWindow(width, height, "Terraria", NULL, NULL);
-	if (!window)
-	{
+	GLFWwindow *window = window =
+		glfwCreateWindow(width, height, "Terraria", NULL, NULL);
+	if (!window) {
 		glfwTerminate();
 		return -1;
 	}
 
 	glfwMakeContextCurrent(window);
 	int result = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-	if (!result)
-	{
+	if (!result) {
 		std::cerr << "Failed to load glad." << std::endl;
 	}
 
+	glfwSetWindowRefreshCallback(window, onWindowResize);
+
 	glfwSwapInterval(1);
 
-	Renderer renderer;
-	initRenderer(&renderer, width, height);
+	initRenderer();
 
-	int texWidth, texHeight, channels;
-	stbi_set_flip_vertically_on_load(false); // wichtig: OpenGL erwartet UV-Ursprung unten links
-	unsigned char *backgroundTexture = stbi_load("assets/textures/background.png", &texWidth, &texHeight, &channels, 0);
-
-	if (backgroundTexture)
-	{
-		GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
-		glTexImage2D(GL_TEXTURE_2D, 0, format, texWidth, texHeight, 0, format, GL_UNSIGNED_BYTE, backgroundTexture);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-	{
-		std::cerr << "Failed to load texture" << std::endl;
-	}
-	stbi_image_free(backgroundTexture);
-
-	Texture forestSpriteSheet = registerTexture(&renderer, "Forest.png");
+	registerTexture("Forest", PNG);
+	registerTexture("splash", PNG);
 
 	std::cout << "Size of Transorm: " << sizeof(Transform) << std::endl;
 
@@ -88,15 +76,16 @@ int main(void)
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
 
 	glBufferData(GL_SHADER_STORAGE_BUFFER,
-				 transforms.size() * sizeof(Transform),
-				 &transforms[0],
+				 transforms.size() * sizeof(Transform), &transforms[0],
 				 GL_DYNAMIC_DRAW);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 
-	glm::mat4 ortho = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
+	glm::mat4 ortho =
+		glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
 
-	Shader s("assets/shaders/material.vert.glsl", "assets/shaders/material.frag.glsl");
+	Shader s("assets/shaders/material.vert.glsl",
+			 "assets/shaders/material.frag.glsl");
 	s.use();
 	s.setInt("backgroundTexture", 0);
 	s.setMatrix4f("ortho", ortho);
@@ -105,12 +94,17 @@ int main(void)
 	sp.name = "Forest";
 	sp.t = t;
 
+	Sprite background;
+	background.name = "Background";
+	t.atlasPos = glm::vec2(0.0f, 0.0f);
+	t.pos = glm::vec2(0.0f, 0.0f);
+	t.tileSize = glm::vec2(1920.0f, 1080.0f);
+	background.t = t;
+
 	glViewport(0, 0, width, height);
-	while (!glfwWindowShouldClose(window))
-	{
+	while (!glfwWindowShouldClose(window)) {
 		int key = glfwGetKey(window, GLFW_KEY_ESCAPE);
-		if (key == GLFW_PRESS)
-		{
+		if (key == GLFW_PRESS) {
 			break;
 		}
 
@@ -119,22 +113,20 @@ int main(void)
 		s.use();
 		s.setMatrix4f("ortho", ortho);
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, forestSpriteSheet.handle);
+		drawSprite("splash", &background, glm::vec2(0, 0), 1.0f);
+		// drawSprite("Forest", &sp, glm::vec2(100, 200), 5.0f);
+		// drawSprite("Forest", &sp, glm::vec2(100, 300), 5.0f);
+		// drawSprite("Forest", &sp, glm::vec2(200, 200), 5.0f);
+		// drawSprite("Forest", &sp, glm::vec2(300, 200), 5.0f);
+		// drawSprite("Forest", &sp, glm::vec2(400, 200), 5.0f);
+		// drawSprite("Forest", &sp, glm::vec2(500, 200), 5.0f);
 
-		drawSprite(&renderer, &sp, glm::vec2(100, 200), 5.0f);
-		drawSprite(&renderer, &sp, glm::vec2(100, 300), 5.0f);
-		drawSprite(&renderer, &sp, glm::vec2(200, 200), 5.0f);
-		drawSprite(&renderer, &sp, glm::vec2(300, 200), 5.0f);
-		drawSprite(&renderer, &sp, glm::vec2(400, 200), 5.0f);
-		drawSprite(&renderer, &sp, glm::vec2(500, 200), 5.0f);
-		render(&renderer);
-
-		// glDrawArrays(GL_TRIANGLES, 0, 6);
-
+		render();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	shutdownRenderer();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();

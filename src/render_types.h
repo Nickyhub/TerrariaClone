@@ -11,3 +11,12 @@ typedef struct Transform
     float scale;
     float padding; // necessary for alignment on GPU side
 } Transform;
+
+typedef enum ImageFileExtension
+{
+    JPG,
+    PNG,
+    BMP,
+
+    IFE_MAX,
+} ImageFileExtension;
