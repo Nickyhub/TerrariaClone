@@ -19,12 +19,18 @@ typedef struct Texture {
 	GLuint handle;
 } Texture;
 
+typedef struct AtlasEntry {
+	std::string name;
+	Array<Transform, MAX_TRANSFORMS> transforms;
+	int layer;
+} AtlasEntry;
+
 typedef struct Renderer {
 	int width, height;
 	GLuint VAO;
 	GLuint SSBO;
 
-	std::map<std::string, Array<Transform, MAX_TRANSFORMS>> atlases;
+	std::vector<AtlasEntry> atlases;
 
 	// Array<Transform, MAX_TRANSFORMS> transforms;
 	std::map<std::string, Texture> textures;
@@ -38,7 +44,7 @@ typedef struct Sprite {
 void initRenderer();
 void shutdownRenderer();
 
-void registerTexture(const char *name, ImageFileExtension ext);
+void registerTexture(const char *name, ImageFileExtension ext, int layer);
 
 void drawSprite(std::string atlasName, Sprite *sprite, glm::vec2 pos,
 				float scale);

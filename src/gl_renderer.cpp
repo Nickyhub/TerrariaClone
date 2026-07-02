@@ -1,7 +1,7 @@
 #include "gl_renderer.h"
 
+#include <algorithm>
 #include <iostream>
-// #include <string>
 
 #include <stb_image/stb_image.h>
 
@@ -27,7 +27,7 @@ void initRenderer() {
 
 void shutdownRenderer() { delete render_ptr; }
 
-void registerTexture(const char *name, ImageFileExtension ext) {
+void registerTexture(const char *name, ImageFileExtension ext, int layer) {
 	Texture t;
 	glGenTextures(1, &t.handle);
 	glActiveTexture(GL_TEXTURE0);
@@ -74,15 +74,28 @@ void registerTexture(const char *name, ImageFileExtension ext) {
 
 	// Put it in the atlas lookups and in the textures themselves
 	render_ptr->textures.insert(std::make_pair(name, t));
-	render_ptr->atlases.insert(
-		std::make_pair(name, Array<Transform, MAX_TRANSFORMS>()));
+
+	AtlasEntry ae;
+	ae.name = name;
+	ae.transforms = Array<Transform, MAX_TRANSFORMS>();
+	ae.layer = layer;
+
+	render_ptr->atlases.emplace_back(ae);
+	std::sort(render_ptr->atlases.begin(), render_ptr->atlases.end(),
+			  [](const AtlasEntry &a, const AtlasEntry &b) {
+				  return a.layer < b.layer;
+			  });
 }
 
 void drawSprite(std::string atlasName, Sprite *sprite, glm::vec2 pos,
 				float scale) {
 	sprite->t.pos = pos;
 	sprite->t.scale = scale;
-	render_ptr->atlases.at(atlasName).add(sprite->t);
+	for (int i = 0; i < render_ptr->atlases.size(); i++) {
+		if (render_ptr->atlases[i].name == atlasName) {
+			render_ptr->atlases[i].transforms.add(sprite->t);
+		}
+	}
 }
 
 void render() {
@@ -90,18 +103,19 @@ void render() {
 
 	glActiveTexture(GL_TEXTURE0);
 
-	std::map<std::string, Array<Transform, MAX_TRANSFORMS>>::iterator it;
-	for (it = render_ptr->atlases.begin(); it != render_ptr->atlases.end();
-		 it++) {
-		glBindTexture(GL_TEXTURE_2D, render_ptr->textures.at(it->first).handle);
+	Renderer *r = render_ptr;
+	for (int i = 0; i < r->atlases.size(); i++) {
+
+		glBindTexture(GL_TEXTURE_2D, r->textures.at(r->atlases[i].name).handle);
 
 		glBufferData(GL_SHADER_STORAGE_BUFFER,
-					 it->second.size() * sizeof(Transform), &it->second[0],
-					 GL_DYNAMIC_DRAW);
+					 r->atlases[i].transforms.size() * sizeof(Transform),
+					 &r->atlases[i].transforms[0], GL_DYNAMIC_DRAW);
 
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, render_ptr->SSBO);
 
-		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, (GLsizei)it->second.size());
-		it->second.reset();
+		glDrawArraysInstanced(GL_TRIANGLES, 0, 6,
+							  (GLsizei)r->atlases[i].transforms.size());
+		r->atlases[i].transforms.reset();
 	}
 }

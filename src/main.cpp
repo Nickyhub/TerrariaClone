@@ -49,8 +49,8 @@ int main(void) {
 
 	initRenderer();
 
-	registerTexture("Forest", PNG);
-	registerTexture("splash", PNG);
+	registerTexture("Forest", PNG, 1);
+	registerTexture("splash", PNG, 0);
 
 	std::cout << "Size of Transorm: " << sizeof(Transform) << std::endl;
 
@@ -65,7 +65,7 @@ int main(void) {
 	t.pos.x = 100;
 	t.pos.y = 100;
 
-	t.scale = 1.0;
+	t.scale = 5.0;
 
 	transforms.push_back(t);
 	t.pos.x = 200;
@@ -114,12 +114,12 @@ int main(void) {
 		s.setMatrix4f("ortho", ortho);
 
 		drawSprite("splash", &background, glm::vec2(0, 0), 1.0f);
-		// drawSprite("Forest", &sp, glm::vec2(100, 200), 5.0f);
-		// drawSprite("Forest", &sp, glm::vec2(100, 300), 5.0f);
-		// drawSprite("Forest", &sp, glm::vec2(200, 200), 5.0f);
-		// drawSprite("Forest", &sp, glm::vec2(300, 200), 5.0f);
-		// drawSprite("Forest", &sp, glm::vec2(400, 200), 5.0f);
-		// drawSprite("Forest", &sp, glm::vec2(500, 200), 5.0f);
+		drawSprite("Forest", &sp, glm::vec2(100, 200), 1.0f);
+		drawSprite("Forest", &sp, glm::vec2(100, 300), 1.0f);
+		drawSprite("Forest", &sp, glm::vec2(200, 200), 1.0f);
+		drawSprite("Forest", &sp, glm::vec2(300, 200), 1.0f);
+		drawSprite("Forest", &sp, glm::vec2(400, 200), 1.0f);
+		drawSprite("Forest", &sp, glm::vec2(500, 200), 1.0f);
 
 		render();
 		glfwSwapBuffers(window);
