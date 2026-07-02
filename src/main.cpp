@@ -12,7 +12,18 @@
 #include "render_types.h"
 #include "shader.h"
 
-const int width = 1920, height = 1080;
+int globalWidth = 1920, globalHeight = 1080;
+
+glm::mat4 ortho = glm::ortho(0.0f, (float)globalWidth, (float)globalHeight,
+							 0.0f, -1.0f, 1.0f);
+
+void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
+	glViewport(0, 0, width, height);
+
+	globalWidth = width;
+	globalHeight = height;
+	ortho = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
+}
 
 void onWindowResize(GLFWwindow *window) {
 	// glViewport(get)
@@ -31,7 +42,7 @@ int main(void) {
 											  // testing the game for shipping
 
 	GLFWwindow *window = window =
-		glfwCreateWindow(width, height, "Terraria", NULL, NULL);
+		glfwCreateWindow(globalWidth, globalHeight, "Terraria", NULL, NULL);
 	if (!window) {
 		glfwTerminate();
 		return -1;
@@ -43,8 +54,7 @@ int main(void) {
 		std::cerr << "Failed to load glad." << std::endl;
 	}
 
-	glfwSetWindowRefreshCallback(window, onWindowResize);
-
+	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 	glfwSwapInterval(1);
 
 	initRenderer();
@@ -65,8 +75,6 @@ int main(void) {
 	t.pos.x = 100;
 	t.pos.y = 100;
 
-	t.scale = 5.0;
-
 	transforms.push_back(t);
 	t.pos.x = 200;
 	transforms.push_back(t);
@@ -80,9 +88,6 @@ int main(void) {
 				 GL_DYNAMIC_DRAW);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
-
-	glm::mat4 ortho =
-		glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
 
 	Shader s("assets/shaders/material.vert.glsl",
 			 "assets/shaders/material.frag.glsl");
@@ -101,7 +106,7 @@ int main(void) {
 	t.tileSize = glm::vec2(1920.0f, 1080.0f);
 	background.t = t;
 
-	glViewport(0, 0, width, height);
+	glViewport(0, 0, globalWidth, globalHeight);
 	while (!glfwWindowShouldClose(window)) {
 		int key = glfwGetKey(window, GLFW_KEY_ESCAPE);
 		if (key == GLFW_PRESS) {
@@ -113,13 +118,14 @@ int main(void) {
 		s.use();
 		s.setMatrix4f("ortho", ortho);
 
-		drawSprite("splash", &background, glm::vec2(0, 0), 1.0f);
-		drawSprite("Forest", &sp, glm::vec2(100, 200), 1.0f);
-		drawSprite("Forest", &sp, glm::vec2(100, 300), 1.0f);
-		drawSprite("Forest", &sp, glm::vec2(200, 200), 1.0f);
-		drawSprite("Forest", &sp, glm::vec2(300, 200), 1.0f);
-		drawSprite("Forest", &sp, glm::vec2(400, 200), 1.0f);
-		drawSprite("Forest", &sp, glm::vec2(500, 200), 1.0f);
+		drawSprite("splash", &background, glm::vec2(0, 0),
+				   glm::vec2(globalWidth, globalHeight));
+		drawSprite("Forest", &sp, glm::vec2(100, 200), glm::vec2(10.0f, 10.0f));
+		drawSprite("Forest", &sp, glm::vec2(100, 300), glm::vec2(20.0f, 10.0f));
+		drawSprite("Forest", &sp, glm::vec2(200, 200), glm::vec2(30.0f, 10.0f));
+		drawSprite("Forest", &sp, glm::vec2(300, 200), glm::vec2(40.0f, 10.0f));
+		drawSprite("Forest", &sp, glm::vec2(400, 200), glm::vec2(50.0f, 10.0f));
+		drawSprite("Forest", &sp, glm::vec2(500, 200), glm::vec2(60.0f, 10.0f));
 
 		render();
 		glfwSwapBuffers(window);

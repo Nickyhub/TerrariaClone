@@ -47,6 +47,6 @@ void shutdownRenderer();
 void registerTexture(const char *name, ImageFileExtension ext, int layer);
 
 void drawSprite(std::string atlasName, Sprite *sprite, glm::vec2 pos,
-				float scale);
+				glm::vec2 size);
 
 void render();

@@ -2,21 +2,17 @@
 
 #include <glm/glm.hpp>
 
-typedef struct Transform
-{
-    glm::vec2 pos;
-    glm::vec2 atlasPos;
-    glm::vec2 tileSize;
-
-    float scale;
-    float padding; // necessary for alignment on GPU side
+typedef struct Transform {
+	glm::vec2 pos;
+	glm::vec2 size;
+	glm::vec2 atlasPos;
+	glm::vec2 tileSize;
 } Transform;
 
-typedef enum ImageFileExtension
-{
-    JPG,
-    PNG,
-    BMP,
+typedef enum ImageFileExtension {
+	JPG,
+	PNG,
+	BMP,
 
-    IFE_MAX,
+	IFE_MAX,
 } ImageFileExtension;

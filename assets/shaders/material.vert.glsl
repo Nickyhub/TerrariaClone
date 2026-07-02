@@ -5,10 +5,9 @@ out vec2 TexCoord;
 
 struct Transform {
     vec2 pos;
+    vec2 size;
     vec2 atlasPos;
     vec2 tileSize;
-
-    float scale;
 };
 
 layout(std430, binding = 0) buffer TransformSBO
@@ -22,13 +21,23 @@ void main()
 {
     Transform t = transforms[gl_InstanceID];
 
-    vec2 positions[6] = vec2[6](
-        vec2(t.pos.x,  t.pos.y + t.tileSize.y * t.scale), // bottom left
-        vec2(t.pos.x + t.tileSize.x* t.scale,  t.pos.y + t.tileSize.y* t.scale), // bottom right
-        vec2(t.pos.x + t.tileSize.x* t.scale,  t.pos.y), // top right
+    // vec2 positions[6] = vec2[6](
+    //     vec2(t.pos.x,  t.pos.y + t.tileSize.y * t.scale), // bottom left
+    //     vec2(t.pos.x + t.tileSize.x* t.scale,  t.pos.y + t.tileSize.y* t.scale), // bottom right
+    //     vec2(t.pos.x + t.tileSize.x* t.scale,  t.pos.y), // top right
 
-        vec2(t.pos.x,  t.pos.y + t.tileSize.y* t.scale), // bottom left
-        vec2(t.pos.x + t.tileSize.x* t.scale,  t.pos.y), // top right
+    //     vec2(t.pos.x,  t.pos.y + t.tileSize.y* t.scale), // bottom left
+    //     vec2(t.pos.x + t.tileSize.x* t.scale,  t.pos.y), // top right
+    //     vec2(t.pos.x,  t.pos.y)  // top left
+    // );
+
+    vec2 positions[6] = vec2[6](
+        vec2(t.pos.x,  t.pos.y + t.size.y), // bottom left
+        vec2(t.pos.x + t.size.x,  t.pos.y + t.size.y), // bottom right
+        vec2(t.pos.x + t.size.x,  t.pos.y), // top right
+
+        vec2(t.pos.x,  t.pos.y + t.size.y), // bottom left
+        vec2(t.pos.x + t.size.x, t.pos.y), // top right
         vec2(t.pos.x,  t.pos.y)  // top left
     );
 

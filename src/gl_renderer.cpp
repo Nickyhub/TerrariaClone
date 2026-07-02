@@ -88,9 +88,9 @@ void registerTexture(const char *name, ImageFileExtension ext, int layer) {
 }
 
 void drawSprite(std::string atlasName, Sprite *sprite, glm::vec2 pos,
-				float scale) {
+				glm::vec2 size) {
 	sprite->t.pos = pos;
-	sprite->t.scale = scale;
+	sprite->t.size = size;
 	for (int i = 0; i < render_ptr->atlases.size(); i++) {
 		if (render_ptr->atlases[i].name == atlasName) {
 			render_ptr->atlases[i].transforms.add(sprite->t);
